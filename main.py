@@ -25,17 +25,21 @@ async def connect_nodes():
     await bot.wait_until_ready()
 
     await wavelink.NodePool.create_node(
-        bot=bot,
-        host='0.0.0.0',
-        port=2333,
-        password=config.get("config", "password")
+
+        bot= bot,
+
+        host= config.get("config", "ip"),
+
+        port= config.get("config", "port"),
+
+        password= config.get("config", "password")
     )
 
 
 # COMMANDS
 
 
-@bot.command(name="github")
+@bot.command(name="github", description="Returns the bot's github project url")
 async def github(ctx: commands.Context):
 
     await ctx.respond("Here's my github url: https://github.com/rlp81/JuxeBot")
@@ -71,6 +75,38 @@ async def queue(ctx: commands.Context):
     else:
 
         return await ctx.respond("Bot not in a voice channel.")
+
+
+@bot.command(name="remove", description="Removes an entry within the queue")
+async def remove(ctx:commands.Context, song: int):
+
+    song -= 1
+
+    vc = ctx.voice_client
+
+    if vc:
+
+        if vc.channel.id == ctx.author.voice.channel.id:
+
+            if vc.queue[song]:
+
+                query = vc.queue[song]
+
+                del vc.queue[song]
+
+                await ctx.respond(f"Removed query {query}.")
+
+            else:
+
+                return await ctx.respond("This is not a valid query.")
+
+        else:
+
+            return await ctx.respond("You must be in the same voice chanel as the bot.")
+
+    else:
+
+        return await ctx.respond("The bot is not in a channel.")
 
 
 
