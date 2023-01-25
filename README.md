@@ -1,5 +1,5 @@
 # JuxeBot
-Juxebot is a discord music bot programmed in Python with the wavelink library.
+Juxebot is a discord music bot programmed in Python using the wavelink library.
 
 # Required files
 
