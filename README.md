@@ -25,7 +25,7 @@ Install the wavelink library using pip in your terminal
 
 `python3 -m pip install wavelink`
 
-#Running the bot
+# Running the bot
 
 Run the lavalink file in your terminal using screen or open a second tab or terminal for the python file.
 
