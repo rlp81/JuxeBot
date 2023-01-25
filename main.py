@@ -7,7 +7,7 @@ import pafy
 config = configparser.ConfigParser()
 confile = config.read("config.conf")
 
-#guilds = [1055885128146108456, 866127811000401921]
+#input within discord.Bot() to use slash commands in select servers debug_guilds = [] e.g. bot = discord.Bot(debug_guilds = [000000000000000000000])
 bot = discord.Bot()
 
 
@@ -52,7 +52,7 @@ async def queue(ctx: commands.Context):
 
             emb = discord.Embed(title="Queue")
 
-            num=0
+            num = 0
 
             for i in vc.queue:
 
