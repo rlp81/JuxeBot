@@ -7,7 +7,7 @@ import pafy
 config = configparser.ConfigParser()
 confile = config.read("config.conf")
 
-#debug_guilds = [] input within discord.Bot() to use slash commands in select servers e.g. bot = discord.Bot(debug_guilds = [0000000000000000000, 11111111111111111111])
+# debug_guilds = [] input within discord.Bot() to use slash commands in select servers e.g. bot = discord.Bot(debug_guilds = [0000000000000000000, 11111111111111111111])
 bot = discord.Bot()
 
 
@@ -35,6 +35,12 @@ async def connect_nodes():
 # COMMANDS
 
 
+@bot.command(name="github")
+async def github(ctx: commands.Context):
+
+    await ctx.respond("Here's my github url: https://github.com/rlp81/JuxeBot")
+
+
 @bot.command(name="queue", description="Lists queued songs")
 async def queue(ctx: commands.Context):
 
@@ -52,7 +58,7 @@ async def queue(ctx: commands.Context):
 
             emb = discord.Embed(title="Queue")
 
-            num = 0
+            num=0
 
             for i in vc.queue:
 
