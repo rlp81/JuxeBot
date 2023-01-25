@@ -7,7 +7,7 @@ import pafy
 config = configparser.ConfigParser()
 confile = config.read("config.conf")
 
-#input within discord.Bot() to use slash commands in select servers debug_guilds = [] e.g. bot = discord.Bot(debug_guilds = [000000000000000000000])
+#debug_guilds = [] input within discord.Bot() to use slash commands in select servers e.g. bot = discord.Bot(debug_guilds = [0000000000000000000, 11111111111111111111])
 bot = discord.Bot()
 
 
