@@ -3,6 +3,10 @@ Juxebot is a discord music bot programmed in Python using the wavelink library.
 
 # Required files
 
+## Pafy
+
+Pafy has came preinstalled with this project; simply because stock pafy returns errors from some commands.
+
 ## Lavalink
 
 Install the Lavalink jar file from [freyacodes/Lavalink](https://github.com/freyacodes/Lavalink)
