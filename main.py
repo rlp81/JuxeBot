@@ -19,6 +19,10 @@ class CustomPlayer(wavelink.Player):
 
         self.queue = wavelink.Queue()
 
+        self.loop = False
+
+        self.current = ""
+
 
 async def connect_nodes():
 
@@ -40,13 +44,13 @@ async def connect_nodes():
 
 
 @bot.command(name="github", description="Returns the bot's github project url")
-async def github(ctx: commands.Context):
+async def github(ctx: discord.ApplicationContext):
 
     await ctx.respond("Here's my github url: https://github.com/rlp81/JuxeBot")
 
 
 @bot.command(name="queue", description="Lists queued songs")
-async def queue(ctx: commands.Context):
+async def queue(ctx: discord.ApplicationContext):
 
     await ctx.defer()
 
@@ -78,7 +82,7 @@ async def queue(ctx: commands.Context):
 
 
 @bot.command(name="remove", description="Removes an entry within the queue")
-async def remove(ctx:commands.Context, song: int):
+async def remove(ctx: discord.ApplicationContext, song: int):
 
     song -= 1
 
@@ -111,13 +115,13 @@ async def remove(ctx:commands.Context, song: int):
 
 
 @bot.command(name="ping", description="Returns ping of the bot")
-async def ping(ctx: commands.Context):
+async def ping(ctx: discord.ApplicationContext):
 
     await ctx.respond(f"My ping is {round(len(bot.latency*1000))}")
 
 
 @bot.command(name="pause", description="Pauses currently playing song")
-async def pause(ctx: commands.Context):
+async def pause(ctx: discord.ApplicationContext):
 
     await ctx.defer()
 
@@ -160,7 +164,7 @@ async def pause(ctx: commands.Context):
 
 
 @bot.command(name="clear", description="Clears the queue")
-async def clear(ctx: commands.Context):
+async def clear(ctx: discord.ApplicationContext):
 
     await ctx.defer()
 
@@ -191,7 +195,7 @@ async def clear(ctx: commands.Context):
 
 
 @bot.command(name="resume", description="Resumes currently paused song")
-async def resume(ctx: commands.Context):
+async def resume(ctx: discord.ApplicationContext):
 
     await ctx.defer()
 
@@ -203,21 +207,15 @@ async def resume(ctx: commands.Context):
 
             if ctx.author.voice.channel.id == vc.channel.id:
 
-                if vc.is_playing():
+                if vc.is_paused():
 
-                    return await ctx.respond("Bot is not paused.")
+                    await vc.resume()
+
+                    await ctx.respond("Resumed the bot.")
 
                 else:
 
-                    if vc.is_paused():
-
-                        await vc.resume()
-
-                        await ctx.respond("Resumed the bot.")
-
-                    else:
-
-                        return await ctx.respond("No songs are paused.")
+                    return await ctx.respond("No songs are paused.")
 
             else:
 
@@ -233,7 +231,7 @@ async def resume(ctx: commands.Context):
 
 
 @bot.command(name="skip", description="Skips currently playing song")
-async def skip(ctx: commands.Context):
+async def skip(ctx: discord.ApplicationContext):
 
     await ctx.defer()
 
@@ -282,7 +280,7 @@ async def skip(ctx: commands.Context):
 
 
 @bot.command(name="stop", description="Stops the music")
-async def stop(ctx: commands.Context):
+async def stop(ctx: discord.ApplicationContext):
 
     await ctx.defer()
 
@@ -324,7 +322,7 @@ async def stop(ctx: commands.Context):
 
 
 @bot.command(name="disconnect", description="Leaves the current channel")
-async def disconnect(ctx: commands.Context):
+async def disconnect(ctx: discord.ApplicationContext):
 
     await ctx.defer()
 
@@ -339,6 +337,10 @@ async def disconnect(ctx: commands.Context):
         return await ctx.respond("You must be in the same channel as the bot.")
 
     else:
+
+        vc.loop = False
+
+        vc.current = ""
 
         await vc.disconnect()
 
@@ -371,8 +373,46 @@ async def connect(ctx: commands.Context):
         return await ctx.respond("Bot already in a channel.")
 
 
+@bot.command(name="loop", description="Loops a song")
+async def play(ctx: discord.ApplicationContext):
+
+    await ctx.defer()
+
+    vc = ctx.voice_client
+
+    if vc:
+
+        if ctx.author.voice.channel.id == vc.channel.id:
+
+            if vc.is_playing():
+
+                if vc.loop:
+
+                    vc.loop = False
+
+                    await ctx.respond(f"Unlooped song {vc.source.title}.")
+
+                else:
+
+                    await ctx.respond(f"Looped song {vc.source.title}.")
+
+                    vc.loop = True
+
+                if vc.is_paused():
+
+                    await vc.resume()
+
+        else:
+
+            return await ctx.respond("You must be in the same voice channel as the bot.")
+
+    else:
+
+        return await ctx.respond("Bot not in a voice channel.")
+
+
 @bot.command(name="play", description="plays a song from youtube")
-async def play(ctx: commands.Context, search: str):
+async def play(ctx: discord.ApplicationContext, search: str):
 
     await ctx.defer()
 
@@ -391,6 +431,8 @@ async def play(ctx: commands.Context, search: str):
             return await ctx.respond("No song was found.")
 
         await vc.play(song)
+
+        player.current = song
 
         if vc.source.uri:
 
@@ -415,44 +457,46 @@ async def play(ctx: commands.Context, search: str):
 
         await ctx.respond(embed=emb)
 
-    elif ctx.author.voice.channel.id != vc.channel.id:
-
-        return await ctx.respond("You must be in the same channel as the bot.")
-
     elif vc.is_playing():
 
-        song = await wavelink.YouTubeTrack.search(query=search, return_first=True)
+        if ctx.author.voice.channel.id == vc.channel.id:
 
-        if not song:
+            song = await wavelink.YouTubeTrack.search(query=search, return_first=True)
 
-            return await ctx.respond("No song was found.")
+            if not song:
 
-        vc.queue.put(item=song)
+                return await ctx.respond("No song was found.")
 
-        if song.uri:
+            vc.queue.put(item=song)
 
-            emb = discord.Embed(title=f"Queued **{song.title}**",
-                                description=f"**Uploaded by:** {song.info['author']}",
-                                url=song.uri
-                                )
+            if song.uri:
 
-            thumb = pafy.new(song.uri)
+                emb = discord.Embed(title=f"Queued **{song.title}**",
+                                    description=f"**Uploaded by:** {song.info['author']}",
+                                    url=song.uri
+                                    )
 
-            value = thumb.bigthumb
+                thumb = pafy.new(song.uri)
 
-            emb.set_thumbnail(url=value)
+                value = thumb.bigthumb
 
-            emb.set_author(name=ctx.author, icon_url=ctx.author.avatar.url)
+                emb.set_thumbnail(url=value)
 
-            await ctx.respond(embed=emb)
+                emb.set_author(name=ctx.author, icon_url=ctx.author.avatar.url)
+
+                await ctx.respond(embed=emb)
+
+            else:
+
+                emb = discord.Embed(title=f"**{song.title}**",
+                                    description=f"**Uploaded by:** {song.info['author']}"
+                                    )
+
+                await ctx.respond(embed=emb)
 
         else:
 
-            emb = discord.Embed(title=f"**{song.title}**",
-                                description=f"**Uploaded by:** {song.info['author']}"
-                                )
-
-            await ctx.respond(embed=emb)
+            return await ctx.respond("You must be in the same channel as the bot.")
 
 
 # EVENTS
@@ -460,11 +504,24 @@ async def play(ctx: commands.Context, search: str):
 
 @bot.event
 async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, reason):
-    if not player.queue.is_empty:
 
-        next_track = player.queue.get()
+    if player.loop:
 
-        await player.play(next_track)
+        return await player.play(player.current)
+
+    else:
+
+        if not player.queue.is_empty:
+
+            next_track = player.queue.get()
+
+            await player.play(next_track)
+
+            player.current = next_track
+
+        else:
+
+            player.current = ""
 
 
 @bot.event
