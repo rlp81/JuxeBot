@@ -19,9 +19,11 @@ class CustomPlayer(wavelink.Player):
 
         self.queue = wavelink.Queue()
 
-        self.loop = False
+        self.loop: bool = False
 
-        self.current = ""
+        self.current: str = ""
+
+        self.chan: int = 0
 
 
 async def connect_nodes():
@@ -162,7 +164,6 @@ async def pause(ctx: discord.ApplicationContext):
         await ctx.respond("Bot is not in a voice channel.")
 
 
-
 @bot.command(name="clear", description="Clears the queue")
 async def clear(ctx: discord.ApplicationContext):
 
@@ -191,7 +192,6 @@ async def clear(ctx: discord.ApplicationContext):
 
     else:
        return await ctx.respond("Bot is not in a channel.")
-
 
 
 @bot.command(name="resume", description="Resumes currently paused song")
@@ -332,19 +332,29 @@ async def disconnect(ctx: discord.ApplicationContext):
 
         return await ctx.respond("Bot is not in a channel.")
 
-    elif vc.channel.id != ctx.author.voice.channel.id:
-
-        return await ctx.respond("You must be in the same channel as the bot.")
-
     else:
 
-        vc.loop = False
+        if ctx.author.voice:
 
-        vc.current = ""
+            if vc.channel.id == ctx.author.voice.channel.id:
 
-        await vc.disconnect()
+                vc.loop = False
 
-        await ctx.respond("Disconnected from voice channel.")
+                vc.current = ""
+
+                await vc.disconnect()
+
+                vc.chan = 0
+
+                await ctx.respond("Disconnected from voice channel.")
+
+            else:
+
+                return await ctx.respond("You must be in the same channel as the bot.")
+
+        else:
+
+            return await ctx.respond("You must be in the same channel as the bot.")
 
 
 @bot.command(name="connect", description="Connects to your channel")
@@ -361,6 +371,8 @@ async def connect(ctx: commands.Context):
             player = CustomPlayer()
 
             vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=player)
+
+            vc.chan = ctx.channel.id
 
             await ctx.respond(f"Connected to voice channel {ctx.author.voice.channel.mention}")
 
@@ -411,6 +423,51 @@ async def play(ctx: discord.ApplicationContext):
         return await ctx.respond("Bot not in a voice channel.")
 
 
+@bot.command(name="nowplaying", description="Returns what is currently playing")
+async def nowplaying(ctx: discord.ApplicationContext):
+
+    await ctx.defer()
+
+    vc = ctx.voice_client
+
+    if vc:
+
+        song = vc.source
+
+        if song:
+
+            if song.uri:
+
+                emb = discord.Embed(title=f"Now playing **{song.title}**",
+                                    description=f"**Uploaded by:** {song.info['author']}",
+                                    url=song.uri
+                                    )
+
+                thumb = pafy.new(song.uri)
+
+                value = thumb.bigthumb
+
+                emb.set_thumbnail(url=value)
+
+                emb.set_author(name=ctx.author, icon_url=ctx.author.avatar.url)
+
+                await ctx.respond(embed=emb)
+
+            else:
+
+                emb = discord.Embed(title=f"**Now playing {song.title}**",
+                                    description=f"**Uploaded by:** {song.info['author']}"
+                                    )
+
+                emb.set_author(name=ctx.author, icon_url=ctx.author.avatar.url)
+
+                await ctx.respond(embed=emb)
+
+    else:
+
+        return await ctx.respond("Bit not in a voice channel.")
+
+
 @bot.command(name="play", description="plays a song from youtube")
 async def play(ctx: discord.ApplicationContext, search: str):
 
@@ -423,6 +480,8 @@ async def play(ctx: discord.ApplicationContext, search: str):
         player = CustomPlayer()
 
         vc: CustomPlayer = await ctx.author.voice.channel.connect(cls=player)
+
+        vc.chan = ctx.channel.id
 
         song = await wavelink.YouTubeTrack.search(query=search, return_first=True)
 
@@ -492,6 +551,8 @@ async def play(ctx: discord.ApplicationContext, search: str):
                                     description=f"**Uploaded by:** {song.info['author']}"
                                     )
 
+                emb.set_author(name=ctx.author, icon_url=ctx.author.avatar.url)
+
                 await ctx.respond(embed=emb)
 
         else:
@@ -522,6 +583,37 @@ async def on_wavelink_track_end(player: CustomPlayer, track: wavelink.Track, rea
         else:
 
             player.current = ""
+
+    song = player.source
+
+    if song:
+
+        if player.chan != 0:
+
+            channel = bot.get_channel(player.chan)
+
+            if song.uri:
+
+                emb = discord.Embed(title=f"Now playing **{song.title}**",
+                                    description=f"**Uploaded by:** {song.info['author']}",
+                                    url=song.uri
+                                    )
+
+                thumb = pafy.new(song.uri)
+
+                value = thumb.bigthumb
+
+                emb.set_thumbnail(url=value)
+
+                await channel.send(embed=emb)
+
+            else:
+
+                emb = discord.Embed(title=f"**Now playing {song.title}**",
+                                    description=f"**Uploaded by:** {song.info['author']}"
+                                    )
+
+                await channel.send(embed=emb)
 
 
 @bot.event
